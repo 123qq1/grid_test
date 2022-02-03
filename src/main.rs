@@ -37,12 +37,14 @@ fn main() {
         //Events
         .add_event::<ButtonEvent>()
         .add_event::<GridValueEvent>()
+        .add_event::<HandEvent>()
 
         //Runtime
         .add_system(update_grid_image.system())
         .add_system(select_manager.system())
         .add_system(mouse_input.system())
         .add_system(update_grid_value.system())
+        .add_system(deck_manager.system())
 
         .run();
 }
@@ -104,10 +106,15 @@ impl GridChip{
         }
     }
 }
-
+struct HandEvent{
+    index: i32,
+    value: i32,
+}
 struct ValueBoard;
 struct MainCamera;
-struct HandInv;
+struct HandInv{
+    index: i32,
+}
 struct GridValueEvent;
 
 fn setup(
@@ -158,14 +165,16 @@ fn setup(
             .insert_bundle(SpriteSheetBundle {
                 texture_atlas: texture_atlas_handle.clone(),
                 transform: Transform::from_translation(Vec3::new((-80 + x_shift* 40) as f32, -170.0, 0.0)),
-                sprite: TextureAtlasSprite::new(1),
+                sprite: TextureAtlasSprite::new(0),
                 ..Default::default()
             })
             .insert(Button {
                 mode: ButtonMode::Inventory,
-                value: Some(1),
+                value: None,
             })
-            .insert(HandInv);
+            .insert(HandInv{
+                index: x_shift,
+            });
     }
 
     commands
@@ -247,7 +256,7 @@ fn mouse_input(
     buttons: Res<Input<MouseButton>>,
     windows: Res<Windows>,
     cam_query: Query<&Transform, With<MainCamera>>,
-    button_query: Query<(&Button, &Transform)>,
+    mut button_query: Query<(&mut Button, &Transform)>,
     mut ev_button: EventWriter<ButtonEvent>,
 ){
     if !buttons.just_released(MouseButton::Left) {return}
@@ -264,12 +273,13 @@ fn mouse_input(
         let mut mode= ButtonMode::None;
         let mut value = None;
 
-        button_query.iter().for_each(|(button, trans)| {
+        button_query.iter_mut().for_each(|(mut button, trans)| {
             let b_pos = Vec2::new(trans.translation.x, trans.translation.y);
             let dist = b_pos.distance(pos_wld);
             if dist < (IMAGE_SIZE/2) as f32 {
                 mode = button.mode;
                 value = button.value;
+                button.value = None;
             }
         });
 
@@ -281,7 +291,16 @@ fn mouse_input(
         ev_button.send(button_data);
     }
 }
+/*
+fn update_inv_image(
+    mut ev_hand: EventReader<HandEvent>,
+    inv_query: Query<(&mut TextureAtlasSprite, &HandInv)>
+){
+    for ev in ev_hand.iter() {
 
+    }
+}
+*/
 fn select_manager(
     mut ev_button: EventReader<ButtonEvent>,
     mut select_query: Query<(&mut ChipSelect, &mut TextureAtlasSprite)>
@@ -303,7 +322,8 @@ fn select_manager(
 fn deck_manager(
     mut ev_button: EventReader<ButtonEvent>,
     mut deck_query: Query<&mut Deck>,
-    mut inv_query: Query<(&Button, &mut HandInv)>
+    mut inv_query: Query<(&mut Button, &HandInv)>,
+    mut ev_hand: EventWriter<HandEvent>,
 ){
     for ev in ev_button.iter() {
         match ev.mode {
@@ -311,11 +331,21 @@ fn deck_manager(
                 if let Some(val) = ev.value{
                     match val {
                         1 => {
-                            let mut deck = deck_query.single_mut().unwrap();
-                            deck.library.pop();
-                            inv_query.iter_mut.for_each(|(b,mut h)| {
+                            if let Some((mut f_button, mut hand_inv)) = inv_query.iter_mut().filter(|(x,_)|{x.value == None}).min_by_key(|(_, x)| { x.index }) {
 
-                            });
+                                let mut deck = deck_query.single_mut().unwrap();
+
+                                if let Some(new_card) = deck.library.pop() {
+                                    println!("{:?} : {:?}", new_card, f_button.value);
+                                    f_button.value = Some(new_card);
+                                    ev_hand.send(HandEvent{
+                                        value: new_card,
+                                        index: hand_inv.index,
+                                    });
+                                } else {
+                                    //Discard to new library
+                                }
+                            }
                         }
                         _ => {}
                     }
