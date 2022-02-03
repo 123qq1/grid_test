@@ -1,3 +1,4 @@
+use std::mem::swap;
 use bevy::prelude::*;
 
 mod chip_map;
@@ -72,6 +73,19 @@ struct Deck{
 struct ButtonEvent {
     mode: ButtonMode,
     value: Option<i32>,
+}
+
+struct GridEvent{
+
+}
+
+struct InventoryEvent {
+    index: i32,
+    from: i32,
+}
+
+struct DeckEvent{
+
 }
 
 struct ChipSelect{
@@ -291,6 +305,29 @@ fn mouse_input(
         ev_button.send(button_data);
     }
 }
+
+fn button_event_handler(
+    mut ev_button: EventReader<ButtonEvent>,
+    mut ev_inv: EventWriter<InventoryEvent>,
+    mut ev_deck: EventWriter<DeckEvent>,
+    mut ev_grid: EventWriter<GridEvent>,
+){
+    for ev in ev_button.iter() {
+        let val = ev.value;
+        match ev.mode {
+            ButtonMode::Deck =>{
+
+            }
+            ButtonMode::Grid =>{
+
+            }
+            ButtonMode::Inventory =>{
+
+            }
+            _ => {}
+        }
+    }
+}
 /*
 fn update_inv_image(
     mut ev_hand: EventReader<HandEvent>,
@@ -302,7 +339,7 @@ fn update_inv_image(
 }
 */
 fn select_manager(
-    mut ev_button: EventReader<ButtonEvent>,
+    mut ev_inv: EventReader<InventoryEvent>,
     mut select_query: Query<(&mut ChipSelect, &mut TextureAtlasSprite)>
 ){
     for ev in ev_button.iter() {
@@ -320,7 +357,7 @@ fn select_manager(
 }
 
 fn deck_manager(
-    mut ev_button: EventReader<ButtonEvent>,
+    mut ev_deck: EventReader<DeckEvent>,
     mut deck_query: Query<&mut Deck>,
     mut inv_query: Query<(&mut Button, &HandInv)>,
     mut ev_hand: EventWriter<HandEvent>,
@@ -369,7 +406,7 @@ fn screen_to_world_pos(
 
 fn update_grid_image(
     mut grid_query: Query<(&mut TextureAtlasSprite, &mut GridChip)>,
-    mut ev_button: EventReader<ButtonEvent>,
+    mut ev_grid: EventReader<GridEvent>,
     mut ev_value: EventWriter<GridValueEvent>,
     select_query: Query<&ChipSelect>,
 ){
